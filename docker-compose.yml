@@ -1,0 +1,75 @@
+version: '3.6'
+
+services:
+  srvdb:
+    image: postgres
+    container_name: srvdb
+    hostname: srvdb
+    environment:
+      POSTGRES_USER: consultas
+      POSTGRES_DB: consultas
+      POSTGRES_PASSWORD: QueryConSql.pwd
+    ports:
+      - 5432:5432
+    networks:
+      demo16_net:
+        ipv4_address: 172.21.254.10
+
+  srvwildfly:
+    image: jboss/wildfly:16.0.0.Final
+    container_name: srvwildfly
+    hostname: srvwildfly
+    ports:
+      - 8080:8080
+      - 9990:9990
+    volumes:
+      - ./configuration:/opt/jboss/wildfly/domain/configuration
+      - ./s-mgmt-users.properties:/opt/jboss/wildfly/standalone/configuration/mgmt-users.properties
+      - ./s-mgmt-groups.properties:/opt/jboss/wildfly/standalone/configuration/mgmt-groups.properties
+    command: /opt/jboss/wildfly/bin/domain.sh -b 172.21.254.11 -bmanagement 172.21.254.11
+    networks:
+      demo16_net:
+        ipv4_address: 172.21.254.11
+
+  srvwildflya:
+    image: jboss/wildfly:16.0.0.Final
+    container_name: srvwildflya
+    hostname: srvwildflya
+    ports:
+      - 8181:8080
+      - 9991:9990
+    volumes:
+      - ./domain.sh:/opt/jboss/wildfly/bin/domain.sh
+      - ./host1.xml:/opt/jboss/wildfly/domain/configuration/host.xml
+    command: /opt/jboss/wildfly/bin/domain.sh -b 172.21.254.12 -Djboss.domain.master.address=172.21.254.11 -Djboss.bind.address.management=172.21.254.12
+    depends_on:
+      - srvdb
+      - srvwildfly
+    networks:
+      demo16_net:
+        ipv4_address: 172.21.254.12
+
+  srvwildflyb:
+    image: jboss/wildfly:16.0.0.Final
+    container_name: srvwildflyb
+    hostname: srvwildflyb
+    ports:
+      - 8282:8080
+      - 9992:9990
+    volumes:
+      - ./domain.sh:/opt/jboss/wildfly/bin/domain.sh
+      - ./host2.xml:/opt/jboss/wildfly/domain/configuration/host.xml
+    command: /opt/jboss/wildfly/bin/domain.sh -b 172.21.254.13 -Djboss.domain.master.address=172.21.254.11 -Djboss.bind.address.management=172.21.254.13
+    depends_on:
+      - srvdb
+      - srvwildfly
+    networks:
+      demo16_net:
+        ipv4_address: 172.21.254.13
+  
+networks:
+  demo16_net:
+    ipam: 
+      driver: default
+      config:
+        - subnet: "172.21.254.0/24"
